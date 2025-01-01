@@ -258,17 +258,17 @@ class TransactionManager():
            db.close()
         
         
-    def edit_income(self, transaction_id, new_date=None, new_account=None, new_category=None, new_amount=None, new_note=None):
+    def edit_transaction(self, transaction_id, transaction_type, new_date=None, new_account=None, new_account_dest=None, new_category=None, new_amount=None, new_note=None):
         db.connect()
         # Check if the transaction exists
         check_query = """
-        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s AND transaction_type = 'income';
+        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s AND transaction_type = %s;
         """
-        db.cursor.execute(check_query, (transaction_id,))
+        db.cursor.execute(check_query, (transaction_id, transaction_type))
         count = db.cursor.fetchone()['count']
         
         if count == 0:
-            print("No income transaction with this ID exists.")
+            print(f"No {transaction_type} transaction with this ID exists.")
             db.close()
             return
         
@@ -281,93 +281,7 @@ class TransactionManager():
         if new_account:
             update_fields.append("saving_id = %s")
             update_values.append(new_account)
-        if new_category:
-            update_fields.append("category_id = %s")
-            update_values.append(new_category)
-        if new_amount:
-            update_fields.append("amount = %s")
-            update_values.append(new_amount)
-        if new_note:
-            update_fields.append("notes = %s")
-            update_values.append(new_note)
-        
-        update_values.append(transaction_id)
-        
-        query = f"""
-        UPDATE transactions
-        SET {', '.join(update_fields)}
-        WHERE transaction_id = %s;
-        """
-        db.cursor.execute(query, update_values)
-        db.close()
-    
-    def edit_expense(self, transaction_id, new_date=None, new_account=None, new_category=None, new_amount=None, new_note=None):
-        db.connect()
-        # Check if the transaction exists
-        check_query = """
-        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s AND transaction_type = 'expense';
-        """
-        db.cursor.execute(check_query, (transaction_id,))
-        count = db.cursor.fetchone()['count']
-        
-        if count == 0:
-            print("No expense transaction with this ID exists.")
-            db.close()
-            return
-        
-        update_fields = []
-        update_values = []
-        
-        if new_date:
-            update_fields.append("transaction_date = %s")
-            update_values.append(new_date)
-        if new_account:
-            update_fields.append("saving_id = %s")
-            update_values.append(new_account)
-        if new_category:
-            update_fields.append("category_id = %s")
-            update_values.append(new_category)
-        if new_amount:
-            update_fields.append("amount = %s")
-            update_values.append(new_amount)
-        if new_note:
-            update_fields.append("notes = %s")
-            update_values.append(new_note)
-        
-        update_values.append(transaction_id)
-        
-        query = f"""
-        UPDATE transactions
-        SET {', '.join(update_fields)}
-        WHERE transaction_id = %s;
-        """
-        db.cursor.execute(query, update_values)
-        db.close()
-    
-    def edit_transfer(self, transaction_id, new_date=None, new_account_src=None, new_account_dest=None, new_category=None, new_amount=None, new_note=None):
-        db.connect()
-        # Check if the transaction exists
-        check_query = """
-        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s AND transaction_type = 'transfer';
-        """
-        db.cursor.execute(check_query, (transaction_id,))
-        count = db.cursor.fetchone()['count']
-        
-        if count == 0:
-            print("No transfer transaction with this ID exists.")
-            db.close()
-            return
-        
-        update_fields = []
-        update_values = []
-        
-        if new_date:
-            update_fields.append("transaction_date = %s")
-            update_values.append(new_date)
-        if new_account_src:
-            update_fields.append("saving_id = %s")
-            update_values.append(new_account_src)
-        if new_account_dest:
+        if new_account_dest and transaction_type == 'transfer':
             update_fields.append("destination_saving_id = %s")
             update_values.append(new_account_dest)
         if new_category:
@@ -390,6 +304,72 @@ class TransactionManager():
         db.cursor.execute(query, update_values)
         db.close()
     
+    def delete_transaction(self, transaction_id):
+        db.connect()
+        # Check if the transaction exists
+        check_query = """
+        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s;
+        """
+        db.cursor.execute(check_query, (transaction_id,))
+        count = db.cursor.fetchone()['count']
+        
+        if count == 0:
+            print("No transaction with this ID exists.")
+            db.close()
+            return
+        
+        # Get transaction details to update the balance
+        transaction_query = """
+        SELECT saving_id, destination_saving_id, amount, transaction_type
+        FROM transactions
+        WHERE transaction_id = %s;
+        """
+        db.cursor.execute(transaction_query, (transaction_id,))
+        transaction = db.cursor.fetchone()
+        
+        if transaction:
+            saving_id = transaction['saving_id']
+            destination_saving_id = transaction['destination_saving_id']
+            amount = transaction['amount']
+            transaction_type = transaction['transaction_type']
+            
+            if transaction_type == 'income':
+                update_balance_query = """
+                UPDATE savings
+                SET balance = balance - %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(update_balance_query, (amount, saving_id))
+            
+            elif transaction_type == 'expense':
+                update_balance_query = """
+                UPDATE savings
+                SET balance = balance + %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(update_balance_query, (amount, saving_id))
+            
+            elif transaction_type == 'transfer':
+                update_source_balance_query = """
+                UPDATE savings
+                SET balance = balance + %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(update_source_balance_query, (amount, saving_id))
+                
+                update_destination_balance_query = """
+                UPDATE savings
+                SET balance = balance - %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(update_destination_balance_query, (amount, destination_saving_id))
+        
+        # Delete the transaction
+        delete_query = """
+        DELETE FROM transactions WHERE transaction_id = %s;
+        """
+        db.cursor.execute(delete_query, (transaction_id,))
+        db.close()
 class CategoryManager():    
     # menambah kategori tabungan dan pengeluaran
     def add_saving(self, name, balance):

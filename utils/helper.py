@@ -69,6 +69,8 @@ class AppUtils():
         except Exception as e:
             print(f"\nError adding income: {e}\n")
     
+    
+    # REPORT MANAGER
     def add_expense(self, account, amount, category, note, date=None):
         try:
             saving = self.report.get_savings_by_id(account)
@@ -93,7 +95,15 @@ class AppUtils():
             AppUtils.show_all_savings(self)
         except Exception as e:
             print(f"\nError adding transfer: {e}\n")
-            
+    
+    def edit_transaction(self, transaction_id, new_amount, new_category=None, new_note=None, new_date=None):
+        
+        pass
+    
+    def delete_transaction(self, transaction_id):
+        pass
+    
+    # CATEGORY MANAGER
     def add_saving(self, saving_name, saving_balance):
         try:
             self.category.add_saving(saving_name, saving_balance)
@@ -116,6 +126,17 @@ class AppUtils():
             print(f"Account {saving['saving_name']} edited successfully.")
         except Exception as e:
             print(f"\nError editing account: {e}\n")
+            
+    def add_transaction_category():
+        pass
+    
+    def edit_transaction_category():
+        pass
+    
+    def delete_transaction_category():
+        pass
+    
+            
 test = AppUtils()
 # test.show_all_transactions(2024, 11)
 # test.show_expense_overview(2024,10)
@@ -132,5 +153,3 @@ test = AppUtils()
 
 
 test.show_all_savings()
-class CategoryUtils():
-    pass
