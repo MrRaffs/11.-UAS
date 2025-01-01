@@ -1,1 +1,2 @@
-trans
+            dest_account_info = app.show_savings_by_id(dest_account_id)
+            print(f"Destination + Account: {dest_account_info['saving_name']} || Balance: {dest_account_info['saving_balance']:,.2f}")

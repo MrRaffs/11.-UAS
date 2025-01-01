@@ -15,6 +15,8 @@ db = DbModel()
 
 
 class ReportManager():
+    def __init__(self):
+        self.db = DbModel()
     # query untuk laporan
     def get_all_savings(self):
         db.connect()
@@ -24,7 +26,17 @@ class ReportManager():
         """
         db.cursor.execute(query)
         rows = db.cursor.fetchall()
-        result = [dict(row) for row in rows] if rows else []
+        result = [dict(row) for row in rows] if rows else None
+        db.close()
+        return result
+    def get_max_saving_id(self):
+        db.connect()
+        query = """
+        SELECT MAX(saving_id) AS max_saving_id FROM savings;
+        """
+        db.cursor.execute(query)
+        row = db.cursor.fetchone()
+        result = row['max_saving_id'] if row else None
         db.close()
         return result
     
@@ -64,7 +76,31 @@ class ReportManager():
         result = [dict(row) for row in rows] if rows else print("No data")
         db.close()
         return result
-        
+    def get_transaction_category_by_id(self, category_id):
+        db.connect()
+        query = """
+        SELECT * FROM transaction_categories
+        WHERE category_id = %s
+        """
+        db.cursor.execute(query, (category_id,))
+        row = db.cursor.fetchone()
+        result = dict(row) if row else None
+        db.close()
+        return result
+    
+    def get_transaction_category_minmax(self, category_type):
+        db.connect()
+        query = """
+        SELECT MIN(category_id) AS min_category_id, MAX(category_id) AS max_category_id 
+        FROM transaction_categories
+        WHERE category_type = %s
+        """
+        db.cursor.execute(query, (category_type,))
+        row = db.cursor.fetchone()
+        min_category_id = row['min_category_id'] if row else None
+        max_category_id = row['max_category_id'] if row else None
+        db.close()
+        return min_category_id, max_category_id
     
     def get_transactions_by_month_year(self, year=None, month=None): # Query to get transactions by selected month and year
         db.connect()
@@ -187,6 +223,49 @@ class ReportManager():
         db.close()
         return result
     
+    def get_summary(self, year=None, month=None):
+        db.connect()
+        # If no month and year are provided, get the latest month and year in the database
+        if not month or not year:
+            latest_date_query = """
+            SELECT DATE_FORMAT(MAX(transaction_date), '%Y-%m') AS latest_date
+            FROM transactions
+            WHERE transaction_type = 'expense';
+            """
+            db.cursor.execute(latest_date_query)
+            latest_date = db.cursor.fetchone()
+            if latest_date:
+                latest_date = latest_date['latest_date'].split('-')
+                year = latest_date[0]
+                month = latest_date[1]
+            
+        income_query = """
+        SELECT SUM(amount) AS total_income
+        FROM transactions
+        WHERE transaction_type = 'income' AND MONTH(transaction_date) = %s AND YEAR(transaction_date) = %s;
+        """
+        expense_query = """
+        SELECT SUM(amount) AS total_expense
+        FROM transactions
+        WHERE transaction_type = 'expense' AND MONTH(transaction_date) = %s AND YEAR(transaction_date) = %s;
+        """
+
+        db.cursor.execute(income_query, (month, year))
+        total_income = db.cursor.fetchone()['total_income'] or 0
+
+        db.cursor.execute(expense_query, (month, year))
+        total_expense = db.cursor.fetchone()['total_expense'] or 0
+
+        net_change = total_income - total_expense
+
+        db.close()
+
+        return {
+            'date': f"{year}-{month}",
+            'total_income': total_income,
+            'total_expense': total_expense,
+            'net_change': net_change
+        }
     
 class TransactionManager():
     def __init__(self, ):
@@ -258,19 +337,24 @@ class TransactionManager():
            db.close()
         
         
-    def edit_transaction(self, transaction_id, transaction_type, new_date=None, new_account=None, new_account_dest=None, new_category=None, new_amount=None, new_note=None):
+    def edit_transaction(self, transaction_id, new_date=None, new_account=None, new_account_dest=None, new_category=None, new_amount=None, new_note=None):
         db.connect()
         # Check if the transaction exists
         check_query = """
-        SELECT COUNT(*) as count FROM transactions WHERE transaction_id = %s AND transaction_type = %s;
+        SELECT transaction_type, saving_id, destination_saving_id, amount FROM transactions WHERE transaction_id = %s;
         """
-        db.cursor.execute(check_query, (transaction_id, transaction_type))
-        count = db.cursor.fetchone()['count']
+        db.cursor.execute(check_query, (transaction_id,))
+        transaction = db.cursor.fetchone()
         
-        if count == 0:
-            print(f"No {transaction_type} transaction with this ID exists.")
+        if not transaction:
+            print("No transaction with this ID exists.")
             db.close()
             return
+        
+        transaction_type = transaction['transaction_type']
+        old_saving_id = transaction['saving_id']
+        old_dest_saving_id = transaction['destination_saving_id']
+        old_amount = transaction['amount']
         
         update_fields = []
         update_values = []
@@ -278,16 +362,69 @@ class TransactionManager():
         if new_date:
             update_fields.append("transaction_date = %s")
             update_values.append(new_date)
-        if new_account:
+        else:
+            new_date = datetime.now()
+            update_fields.append("transaction_date = %s")
+            update_values.append(new_date)
+            
+        if new_account and new_account != old_saving_id:
             update_fields.append("saving_id = %s")
             update_values.append(new_account)
-        if new_account_dest and transaction_type == 'transfer':
+            
+        if new_account_dest and transaction_type == 'transfer' and new_account_dest != old_dest_saving_id:
             update_fields.append("destination_saving_id = %s")
             update_values.append(new_account_dest)
         if new_category:
             update_fields.append("category_id = %s")
             update_values.append(new_category)
-        if new_amount:
+        if new_amount is not None and new_amount != old_amount:
+            amount_difference = new_amount - old_amount
+            
+            if transaction_type == 'income':
+                balance_update_query = """
+                UPDATE savings
+                SET balance = balance + %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(balance_update_query, (amount_difference, old_saving_id))
+            elif transaction_type == 'expense':
+                balance_update_query = """
+                UPDATE savings
+                SET balance = balance - %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(balance_update_query, (amount_difference, old_saving_id))
+            elif transaction_type == 'transfer':
+                # Revert old balances
+                source_balance_update_query = """
+                UPDATE savings
+                SET balance = balance + %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(source_balance_update_query, (old_amount, old_saving_id))
+                
+                destination_balance_update_query = """
+                UPDATE savings
+                SET balance = balance - %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(destination_balance_update_query, (old_amount, old_dest_saving_id))
+                
+                # Apply new balances
+                new_source_balance_update_query = """
+                UPDATE savings
+                SET balance = balance - %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(new_source_balance_update_query, (new_amount, new_account))
+                
+                new_destination_balance_update_query = """
+                UPDATE savings
+                SET balance = balance + %s
+                WHERE saving_id = %s;
+                """
+                db.cursor.execute(new_destination_balance_update_query, (new_amount, new_account_dest))
+            
             update_fields.append("amount = %s")
             update_values.append(new_amount)
         if new_note:

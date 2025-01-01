@@ -29,52 +29,15 @@ CREATE TABLE transactions (
     FOREIGN KEY (category_id) REFERENCES transaction_categories(category_id)
 );
 
--- Query to fetch all transactions with foreign keys replaced by corresponding names
-SELECT 
-    t.transaction_id,
-    t.saving_id,
-    s1.category_id AS source_category_id,
-    sc1.category_name AS source_category_name,
-    t.destination_saving_id,
-    s2.category_id AS destination_category_id,
-    sc2.category_name AS destination_category_name,
-    tc.category_id AS transaction_category_id,
-    tc.category_name AS transaction_category_name,
-    t.transaction_type,
-    t.transaction_date,
-    t.amount,
-    t.notes
-FROM 
-    transactions t
--- Join to get source saving account details
-LEFT JOIN 
-    savings s1 ON t.saving_id = s1.saving_id
-LEFT JOIN
-    savings_categories sc1 ON s1.category_id = sc1.category_id
--- Join to get destination saving account details
-LEFT JOIN 
-    savings s2 ON t.destination_saving_id = s2.saving_id
-LEFT JOIN 
-    savings_categories sc2 ON s2.category_id = sc2.category_id
--- Join to get transaction category details
-LEFT JOIN 
-    transaction_categories tc ON t.category_id = tc.category_id;
 
 
 
 
-
-
-
--- Insert dummy data into savings_categories
-INSERT INTO savings_categories (category_name) VALUES 
-('Bank BRI'), 
-('Cash');
 
 -- Insert dummy data into savings
-INSERT INTO savings (category_id, balance) VALUES 
-(1, 7000000), 
-(2, 2000000);
+INSERT INTO savings (saving_name, balance) VALUES 
+('Bank BRI', 7000000), 
+('Cash', 2000000);
 
 -- Insert dummy data into transaction_categories
 INSERT INTO transaction_categories (category_name, category_type) VALUES 

@@ -2,12 +2,12 @@ import datetime
 from time import sleep
 
 def date(input_date):
-    """Validates if the input is a date in DD-MM-YYYY format."""
+    """Validates if the input is a date in YYYY-MM-DD format."""
     try:
-        datetime.strptime(input_date, '%d-%m-%Y')
+        datetime.strptime(input_date, '%Y-%m-%d')
         return True
     except ValueError:
-        print("\nTanggal tidak valid. Gunakan format DD-MM-YYYY")
+        print("\nTanggal tidak valid. Gunakan format YYYY-MM-DD")
         sleep(0.5)
         return False
 
@@ -24,4 +24,4 @@ def numeric(input_value, min_value=None, max_value=None):
         return True
     except ValueError:
         return False
-    
+
