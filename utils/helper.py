@@ -1,4 +1,4 @@
-from common_imports import add_parent_dir
+from .common_imports import add_parent_dir
 add_parent_dir()
 
 from func.manager import ReportManager, TransactionManager, CategoryManager 
@@ -155,7 +155,7 @@ class AppUtils():
         except Exception as e:
             print(f"\nError deleting account: {e}\n")
             
-    def edit_saving(self, saving_id, new_balance, new_name=None):
+    def edit_saving(self, saving_id, new_balance=None, new_name=None):
         try:
             saving = self.report.get_savings_by_id(saving_id)
             self.category.edit_savings(saving_id, new_balance, new_name)
@@ -172,7 +172,7 @@ class AppUtils():
     
     def edit_transaction_category(self, category_id, new_name=None, new_type=None):
         try:
-            category = self.category.get_transaction_category_by_id(category_id)
+            category = self.report.get_transaction_category_by_id(category_id)
             self.category.edit_transaction_category(category_id, new_name, new_type)
             print(f"Category {category['category_name']} edited successfully.")
         except Exception as e:
@@ -180,33 +180,33 @@ class AppUtils():
     
     def delete_transaction_category(self, category_id):
         try:
-            category = self.category.get_transaction_category_by_id(category_id)
+            category = self.report.get_transaction_category_by_id(category_id)
             self.category.delete_transaction_category(category_id)
             print(f"Category {category['category_name']} deleted successfully.")
         except Exception as e:
             print(f"\nError deleting category: {e}\n")
             
-test = AppUtils()
-# test.show_all_transactions(2024, 11)
-# test.show_expense_overview(2024,10)
-# test.show_expense_transaction_category()
-test.show_income_transaction_category()
+# test = AppUtils()
+# # test.show_all_transactions(2024, 11)
+# # test.show_expense_overview(2024,10)
+# # test.show_expense_transaction_category()
+# test.show_income_transaction_category()
 
-# test.add_income(1, 1000000, 1, 'test income')
-# test.add_expense(1, 1000000, 1, 'test expense')
-# test.add_transfer(1, 2, 1000000, 'test transfer')
-# test.show_transaction_by_id(21)
+# # test.add_income(1, 1000000, 1, 'test income')
+# # test.add_expense(1, 1000000, 1, 'test expense')
+# # test.add_transfer(1, 2, 1000000, 'test transfer')
+# # test.show_transaction_by_id(21)
 
-# test.add_saving('test', 1000000)
-# test.delete_saving(3)
+# # test.add_saving('test', 1000000)
+# # test.delete_saving(3)
 
-test.show_all_savings()
-
-# test.show_transaction_by_id(36)
-# test.edit_transaction(36, new_account=2, new_account_dest=1, new_amount=2000000)
-# # test.edit_transaction(2, new_amount=20000)
-# test.show_transaction_by_id(36)
 # test.show_all_savings()
 
-# test.get_transaction_category_minmax('income')
-test.show_summary()
+# # test.show_transaction_by_id(36)
+# # test.edit_transaction(36, new_account=2, new_account_dest=1, new_amount=2000000)
+# # # test.edit_transaction(2, new_amount=20000)
+# # test.show_transaction_by_id(36)
+# # test.show_all_savings()
+
+# # test.get_transaction_category_minmax('income')
+# test.show_summary()

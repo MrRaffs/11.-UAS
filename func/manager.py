@@ -1,4 +1,4 @@
-from common_imports import add_parent_dir
+from .common_imports import add_parent_dir
 add_parent_dir()
 from utils.dbcon import DbModel
 from datetime import datetime
@@ -605,20 +605,29 @@ class CategoryManager():
             db.close()
             return
         
-        if new_name:
+        if new_name and new_balance:
             query = """
             UPDATE savings
             SET saving_name = %s, balance = %s
             WHERE saving_id = %s;
             """
             db.cursor.execute(query, (new_name, new_balance, saving_id))
-        else:
+        if new_name:
+            query = """
+            UPDATE savings
+            SET saving_name = %s
+            WHERE saving_id = %s;
+            """
+            db.cursor.execute(query, (new_name, saving_id))
+        if new_balance:
             query = """
             UPDATE savings
             SET balance = %s
             WHERE saving_id = %s;
             """
             db.cursor.execute(query, (new_balance, saving_id))
+        else:
+            print("No changes made.")
         
         db.close()
     

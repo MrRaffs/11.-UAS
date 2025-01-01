@@ -46,11 +46,11 @@ class DbModel:
             print(f"Database {self.db_name} exists.")
         else:
             print(f"Database {self.db_name} does not exist. Creating database...")
-            self.cursor.execute(f"CREATE DATABASE {self.db_name}")
-            print(f"Database {self.db_name} created successfully.")
-            self.cursor.execute(schema)
-            with open('schema.py', 'r') as schema_file:
-                schema = schema_file.read()
-            self.cursor.execute(schema)
-        self.close()
+            # self.cursor.execute(f"CREATE DATABASE {self.db_name}")
+            # print(f"Database {self.db_name} created successfully.")
+            # self.cursor.execute(schema)
+            # with open('schema.py', 'r') as schema_file:
+            #     schema = schema_file.read()
+            # self.cursor.execute(schema)
+        # self.close()
     

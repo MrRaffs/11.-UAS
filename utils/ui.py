@@ -1,5 +1,5 @@
-from helper import AppUtils
-from dbcon import DbModel
+from .helper import AppUtils
+from .dbcon import DbModel
 from datetime import datetime
 import os
 import sys
@@ -10,6 +10,7 @@ db = DbModel()
 class Interface:
     def __init__(self):
         # Database initialization
+        sys.stdout.flush()
         self.clear_screen()
         self.show_landing_page()
         
@@ -275,6 +276,262 @@ class Interface:
         
         app.show_expense_overview(year, month)
         input("\nPress Enter to continue...")
+
+    def show_manage_menu(self):
+        while True:
+            self.clear_screen()
+            print("=" * 50)
+            print("MANAGE SAVINGS AND CATEGORIES")
+            print("=" * 50)
+            print("\n1. Manage Savings")
+            print("2. Manage Categories")
+            print("3. Back to Main Menu")
             
-ui = Interface()
-ui.show_main_menu()
+            choice = input("\nEnter your choice (1-3): ")
+            
+            if choice == "1":
+                self.manage_savings()
+            elif choice == "2":
+                self.manage_categories()
+            elif choice == "3":
+                break
+            else:
+                input("\nInvalid choice. Press Enter to continue...")
+
+    def manage_savings(self):
+        while True:
+            self.clear_screen()
+            print("=" * 50)
+            print("MANAGE SAVINGS")
+            print("=" * 50)
+            app.show_all_savings()
+            print("=" * 50)
+            print("\n1. Add Saving")
+            print("2. Edit Saving")
+            print("3. Delete Saving")
+            print("4. Back to Manage Menu")
+            
+            choice = input("\nEnter your choice (1-4): ")
+            
+            if choice == "1":
+                self.add_saving()
+            elif choice == "2":
+                self.edit_saving()
+            elif choice == "3":
+                self.delete_saving()
+            elif choice == "4":
+                break
+            else:
+                input("\nInvalid choice. Press Enter to continue...")
+
+    def add_saving(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("ADD SAVING")
+        print("=" * 50)
+        
+        name = input("Enter saving name (or 0 to go back): ")
+        if name == "0":
+            return
+        initial_balance = float(input("Enter initial balance: "))
+        
+        app.add_saving(name, initial_balance)
+        print("\nSaving added successfully.")
+        input("\nPress Enter to continue...")
+        
+    def edit_saving(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("EDIT SAVING")
+        print("=" * 50)
+        app.show_all_savings()
+        print("=" * 50)
+        
+        while True:
+            try:
+                saving_id = int(input("Enter saving ID to edit (or 0 to go back): "))
+                if saving_id == 0:
+                    return
+                if 1 <= saving_id <= app.get_max_saving_id():
+                    break
+                print("Invalid saving ID")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        name = input("Enter new saving name (or press Enter to skip): ")
+        if name == "":
+            name = None
+        balance = input("Enter new balance (or press Enter to skip): ")
+        if balance == "":
+            balance = None
+        else:
+            balance = float(balance)
+        
+        app.edit_saving(saving_id, balance, name)
+        print("\nSaving edited successfully.")
+        # Show balance after edit
+        print("\nUpdated Savings:")
+        app.show_all_savings()
+        input("\nPress Enter to continue...")
+        
+    def delete_saving(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("DELETE SAVING")
+        print("=" * 50)
+        app.show_all_savings()
+        print("=" * 50)
+        
+        while True:
+            try:
+                saving_id = int(input("Enter saving ID to delete (or 0 to go back): "))
+                if saving_id == 0:
+                    return
+                if 1 <= saving_id <= app.get_max_saving_id():
+                    break
+                print("Invalid saving ID")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        confirm = input("Are you sure you want to delete this saving? (y/n): ").lower()
+        if confirm == 'y':
+            app.delete_saving(saving_id)
+            print("\nSaving deleted successfully.")
+        else:
+            print("\nDeletion cancelled.")
+        
+        input("\nPress Enter to continue...")
+        
+    def manage_categories(self):
+        while True:
+            self.clear_screen()
+            print("=" * 50)
+            print("MANAGE CATEGORIES")
+            print("=" * 50)
+            print("\n1. Add Category")
+            print("2. Edit Category")
+            print("3. Delete Category")
+            print("4. Back to Manage Menu")
+            
+            choice = input("\nEnter your choice (1-4): ")
+            
+            if choice == "1":
+                self.add_category()
+            elif choice == "2":
+                self.edit_category()
+            elif choice == "3":
+                self.delete_category()
+            elif choice == "4":
+                break
+            else:
+                input("\nInvalid choice. Press Enter to continue...")
+    def add_category(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("ADD CATEGORY")
+        print("=" * 50)
+        
+        while True:
+            category_type_choice = input("Enter category type (1 for expense, 2 for income) or 0 to go back: ")
+            if category_type_choice == "0":
+                return
+            if category_type_choice == "1":
+                category_type = "expense"
+                break
+            elif category_type_choice == "2":
+                category_type = "income"
+                break
+            print("Invalid choice. Please enter '1' for expense or '2' for income.")
+        
+        name = input("Enter category name: ")
+        
+        app.add_transaction_category(name, category_type)
+        print("\nCategory added successfully.")
+        input("\nPress Enter to continue...")
+    
+    def edit_category(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("EDIT CATEGORY")
+        print("=" * 50)
+        
+        while True:
+            category_type_choice = input("Enter category type (1 for expense, 2 for income) or 0 to go back: ")
+            if category_type_choice == "0":
+                return
+            if category_type_choice == "1":
+                category_type = "expense"
+                break
+            elif category_type_choice == "2":
+                category_type = "income"
+                break
+            print("Invalid choice. Please enter '1' for expense or '2' for income.")
+            
+        if category_type == "expense":
+            app.show_expense_transaction_category()
+        else:
+            app.show_income_transaction_category()
+            
+        print("=" * 50)
+        
+        min_category, max_category = app.get_transaction_category_minmax(category_type)
+        while True:
+            try:
+                category_id = int(input("Enter category ID to edit (or 0 to go back): "))
+                if category_id == 0:
+                    return
+                if min_category <= category_id <= max_category:
+                    break
+                print("Invalid category ID")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        name = input("Enter new category name: ")
+        
+        app.edit_transaction_category(category_id, name)
+        # print(f"\nCategory edited to {name} successfully.")
+        input("\nPress Enter to continue...")
+    
+    def delete_category(self):
+        self.clear_screen()
+        print("=" * 50)
+        print("DELETE CATEGORY")
+        print("=" * 50)
+        
+        while True:
+            category_type_choice = input("Enter category type (1 for expense, 2 for income) or 0 to go back: ")
+            if category_type_choice == "0":
+                return
+            if category_type_choice == "1":
+                category_type = "expense"
+                break
+            elif category_type_choice == "2":
+                category_type = "income"
+                break
+            print("Invalid choice. Please enter '1' for expense or '2' for income.")
+            
+        if category_type == "expense":
+            app.show_expense_transaction_category()
+        else:
+            app.show_income_transaction_category()
+
+        min_category, max_category = app.get_transaction_category_minmax(category_type)
+        while True:
+            try:
+                category_id = int(input("Enter category ID to edit (or 0 to go back): "))
+                if category_id == 0:
+                    return
+                if min_category <= category_id <= max_category:
+                    break
+                print("Invalid category ID")
+            except ValueError:
+                print("Please enter a valid number")
+        
+        confirm = input("Are you sure you want to delete this category? (y/n): ").lower()
+        if confirm == 'y':
+            app.delete_transaction_category(category_id)
+            print("\nCategory deleted successfully.")
+        else:
+            print("\nDeletion cancelled.")
+        
+        input("\nPress Enter to continue...")
