@@ -9,7 +9,6 @@ class DbModel:
             self.db_name = 'db_managemen_uang_uas'
             self.connection = None
             sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-                    
 
     def connect(self):
         self.connection = mysql.connector.connect(
@@ -18,13 +17,16 @@ class DbModel:
                 password='',
                 database=self.db_name
             )
-        self.cursor = self.connection.cursor()
+        self.cursor = self.connection.cursor(dictionary=True)
     
     def close(self):
-        if self.connection:
-            self.connection.commit()
-            self.connection.close()
-        print("Connection closed.")
+        try:
+            if self.connection:
+                self.connection.commit()
+                self.connection.close()
+            # print("Connection closed.")
+        except Exception as e:
+            print(f"Error closing connection: {e}")
             
     def check_connection(self):
         try:
@@ -51,3 +53,4 @@ class DbModel:
                 schema = schema_file.read()
             self.cursor.execute(schema)
         self.close()
+    

@@ -18,14 +18,18 @@ class ReportManager():
     # query untuk laporan
     def get_all_savings(self):
         db.connect()
-        query = "SELECT * FROM savings"
+        query = """
+        SELECT s.saving_id, sc.category_name AS saving_name, s.balance AS saving_balance 
+        FROM savings as s
+        JOIN savings_categories sc ON s.category_id = sc.category_id;
+        """
         db.cursor.execute(query)
         rows = db.cursor.fetchall()
-        result = [dict(row) for row in rows] if rows else print("No data")
+        result = [dict(row) for row in rows] if rows else []
         db.close()
         return result
     
-    def get_income_category(self):
+    def get_income_transaction_category(self):
         db.connect()
         query = """
         SELECT * FROM transaction_categories
@@ -33,11 +37,11 @@ class ReportManager():
         """
         db.cursor.execute(query)
         rows = db.cursor.fetchall()
-        result = [dict(row) for row in rows] if rows else print("No data")
+        result = [dict(row) for row in rows] if rows else None
         db.close()
         return result
     
-    def get_expense_category(self):
+    def get_expense_transaction_category(self):
         db.connect()
         query = """
         SELECT * FROM transaction_categories
@@ -50,7 +54,7 @@ class ReportManager():
         return result
         
     
-    def get_transactions_by_month_year(self, month=None, year=None): # Query to get transactions by selected month and year
+    def get_transactions_by_month_year(self, year=None, month=None): # Query to get transactions by selected month and year
         db.connect()
         
         # If no month and year are provided, get the latest month and year in the database
@@ -73,7 +77,7 @@ class ReportManager():
         
         query = """
         SELECT 
-            t.transaction_id
+            t.transaction_id,
             tc.category_name AS transaction_category_name,
             t.transaction_type,
             t.transaction_date,
@@ -96,15 +100,15 @@ class ReportManager():
         WHERE 
             MONTH(t.transaction_date) = %s AND YEAR(t.transaction_date) = %s
         ORDER BY 
-            t.transaction_date DESC;
+            t.transaction_date ASC;
         """
         db.cursor.execute(query, (month, year))
         rows = db.cursor.fetchall()
-        result = [dict(row) for row in rows] if rows else print("No data")
+        result = [dict(row) for row in rows] if rows else None
         db.close()
         return result
     
-    def expense_overview(self, month=None, year=None): # sort by the amount of expense of each category
+    def expense_overview(self, year=None, month=None): # sort by the amount of expense of each category
         db.connect()
         
         # If no month and year are provided, get the latest month and year in the database
@@ -128,25 +132,21 @@ class ReportManager():
         
         query = """
         SELECT
-            t.transaction_id,
-            sc.category_name AS source_category_name,
-            t.transaction_type,
+            tc.category_name AS category_name,
             DATE_FORMAT(transaction_date, '%Y-%m') AS month,
             SUM(t.amount) AS total_expense
         FROM
             transactions t
         LEFT JOIN
-            savings s ON t.saving_id = s.saving_id
-        LEFT JOIN
-            savings_categories sc ON s.category_id = sc.category_id
+            transaction_categories tc ON t.category_id = tc.category_id
         WHERE
             t.transaction_type = 'expense' AND MONTH(transaction_date) = %s AND YEAR(transaction_date) = %s
-        GROUP BY sc.category_name, t.transaction_type, month
+        GROUP BY tc.category_name
         ORDER BY total_expense DESC;
         """
         db.cursor.execute(query, (month, year))
         rows = db.cursor.fetchall()
-        result = [dict(row) for row in rows] if rows else print("No data")
+        result = [dict(row) for row in rows] if rows else None
         db.close()
         return result
     
