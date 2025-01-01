@@ -19,13 +19,25 @@ class ReportManager():
     def get_all_savings(self):
         db.connect()
         query = """
-        SELECT s.saving_id, sc.category_name AS saving_name, s.balance AS saving_balance 
-        FROM savings as s
-        JOIN savings_categories sc ON s.category_id = sc.category_id;
+        SELECT saving_id, saving_name, balance AS saving_balance 
+        FROM savings;
         """
         db.cursor.execute(query)
         rows = db.cursor.fetchall()
         result = [dict(row) for row in rows] if rows else []
+        db.close()
+        return result
+    
+    def get_savings_by_id(self, saving_id):
+        db.connect()
+        query = """
+        SELECT saving_id, saving_name, balance AS saving_balance 
+        FROM savings
+        WHERE saving_id = %s;
+        """
+        db.cursor.execute(query, (saving_id,))
+        row = db.cursor.fetchone()
+        result = dict(row) if row else None
         db.close()
         return result
     
@@ -81,20 +93,16 @@ class ReportManager():
             tc.category_name AS transaction_category_name,
             t.transaction_type,
             t.transaction_date,
-            sc1.category_name AS source_category_name,
-            sc2.category_name AS destination_category_name,
+            s1.saving_name AS source_category_name,
+            s2.saving_name AS destination_category_name,
             t.amount,
             t.notes
         FROM 
             transactions t
         LEFT JOIN 
             savings s1 ON t.saving_id = s1.saving_id
-        LEFT JOIN
-            savings_categories sc1 ON s1.category_id = sc1.category_id
         LEFT JOIN 
             savings s2 ON t.destination_saving_id = s2.saving_id
-        LEFT JOIN 
-            savings_categories sc2 ON s2.category_id = sc2.category_id
         LEFT JOIN 
             transaction_categories tc ON t.category_id = tc.category_id
         WHERE 
@@ -105,6 +113,35 @@ class ReportManager():
         db.cursor.execute(query, (month, year))
         rows = db.cursor.fetchall()
         result = [dict(row) for row in rows] if rows else None
+        db.close()
+        return result
+    
+    def get_transaction_by_id(self, transaction_id):
+        db.connect()
+        query = """
+        SELECT 
+            t.transaction_id,
+            tc.category_name AS transaction_category_name,
+            t.transaction_type,
+            t.transaction_date,
+            s1.saving_name AS source_category_name,
+            s2.saving_name AS destination_category_name,
+            t.amount,
+            t.notes
+        FROM 
+            transactions t
+        LEFT JOIN 
+            savings s1 ON t.saving_id = s1.saving_id
+        LEFT JOIN 
+            savings s2 ON t.destination_saving_id = s2.saving_id
+        LEFT JOIN 
+            transaction_categories tc ON t.category_id = tc.category_id
+        WHERE 
+            t.transaction_id = %s;
+        """
+        db.cursor.execute(query, (transaction_id,))
+        row = db.cursor.fetchone()
+        result = dict(row) if row else None
         db.close()
         return result
     
@@ -194,31 +231,31 @@ class TransactionManager():
         db.cursor.execute(update_balance_query, (amount, account))
         db.close()
     
-    def add_transfer(self, account_source, account_destination, amount, category, note, date=None):
-        db.connect()
-        if not date:
-            date = datetime.now()
-            
-        query = """
-        INSERT INTO transactions (saving_id, destination_saving_id, transaction_date, amount, category_id, notes, transaction_type)
-        VALUES (%s, %s, %s, %s, %s, %s, 'transfer');
-        """
-        db.cursor.execute(query, (account_source, account_destination, date, amount, category, note))
+    def add_transfer(self, account_source, account_destination, amount, note, category=None, date=None):
+           db.connect()
+           if not date:
+               date = datetime.now()
+               
+           query = """
+           INSERT INTO transactions (saving_id, destination_saving_id, transaction_date, amount, category_id, notes, transaction_type)
+           VALUES (%s, %s, %s, %s, %s, %s, 'transfer');
+           """
+           db.cursor.execute(query, (account_source, account_destination, date, amount, category, note))
 
-        update_source_balance_query = """
-        UPDATE savings
-        SET balance = balance - %s
-        WHERE saving_id = %s;
-        """
-        db.cursor.execute(update_source_balance_query, (amount, account_source))
+           update_source_balance_query = """
+           UPDATE savings
+           SET balance = balance - %s
+           WHERE saving_id = %s;
+           """
+           db.cursor.execute(update_source_balance_query, (amount, account_source))
 
-        update_destination_balance_query = """
-        UPDATE savings
-        SET balance = balance + %s
-        WHERE saving_id = %s;
-        """
-        db.cursor.execute(update_destination_balance_query, (amount, account_destination))
-        db.close()
+           update_destination_balance_query = """
+           UPDATE savings
+           SET balance = balance + %s
+           WHERE saving_id = %s;
+           """
+           db.cursor.execute(update_destination_balance_query, (amount, account_destination))
+           db.close()
         
         
     def edit_income(self, transaction_id, new_date=None, new_account=None, new_category=None, new_amount=None, new_note=None):
@@ -355,11 +392,11 @@ class TransactionManager():
     
 class CategoryManager():    
     # menambah kategori tabungan dan pengeluaran
-    def add_savings(self, name, balance):
+    def add_saving(self, name, balance):
         db.connect()
         # Check if a savings account with the same name already exists
         check_query = """
-        SELECT COUNT(*) as count FROM savings WHERE category_name = %s;
+        SELECT COUNT(*) as count FROM savings WHERE saving_name = %s;
         """
         db.cursor.execute(check_query, (name,))
         count = db.cursor.fetchone()['count']
@@ -369,16 +406,16 @@ class CategoryManager():
             db.close()
             return
         
-        query = """
-        INSERT INTO savings (category_name, balance)
+        query_saving = """
+        INSERT INTO savings (saving_name, balance)
         VALUES (%s, %s);
         """
-        db.cursor.execute(query, (name, balance))
+        db.cursor.execute(query_saving, (name, balance))
         db.close()
     
     def add_transaction_category(self, name, category_type):
         db.connect()
-        # Check if a savings account with the same name already exists
+        # Check if a transaction category with the same name already exists
         check_query = """
         SELECT COUNT(*) as count FROM transaction_categories WHERE category_name = %s;
         """
@@ -386,7 +423,7 @@ class CategoryManager():
         count = db.cursor.fetchone()['count']
         
         if count > 0:
-            print("A savings account with this name already exists.")
+            print("A transaction category with this name already exists.")
             db.close()
             return
         
@@ -454,7 +491,7 @@ class CategoryManager():
         if new_name:
             query = """
             UPDATE savings
-            SET category_name = %s, balance = %s
+            SET saving_name = %s, balance = %s
             WHERE saving_id = %s;
             """
             db.cursor.execute(query, (new_name, new_balance, saving_id))

@@ -1,13 +1,8 @@
--- Table for Savings Categories (e.g., Bank BRI, Bank BCA, Cash)
-CREATE TABLE savings_categories (
-    category_id INT AUTO_INCREMENT PRIMARY KEY,
-    category_name VARCHAR(255) NOT NULL UNIQUE
-);
 
 -- Table for Savings (e.g., specific accounts linked to categories)
 CREATE TABLE savings (
     saving_id INT AUTO_INCREMENT PRIMARY KEY,
-    category_id INT,
+    category_name VARCHAR(255) NOT NULL UNIQUE,
     balance DECIMAL(15, 2) NOT NULL DEFAULT 0,
     FOREIGN KEY (category_id) REFERENCES savings_categories(category_id)
 );
