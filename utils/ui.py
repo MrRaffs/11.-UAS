@@ -111,6 +111,7 @@ class Interface:
                 break
             except ValueError:
                 print("Invalid date format. Please use YYYY-MM-DD")
+                
 
         while True:
             try:
@@ -242,8 +243,9 @@ class Interface:
         app.show_summary(year,month)
         print("=" * 50)
         while True:
-            choice = input("\nEnter : 0 back/ 1 edit / 2 delete: ")
-            if choice == "0":
+            # choice = input("\nEnter : 0 back/ 1 edit / 2 delete: ")
+            choice = input("\nPress Enter to back...")
+            if choice == "0" or choice == "":
                 return
             elif choice == "1":
                 self.edit_transaction()
@@ -251,7 +253,29 @@ class Interface:
                 self.delete_transaction()
             else:
                 input("\nInvalid choice. Press Enter to continue...")
-    
+                
+    def edit_transaction(self):
+        print("=" * 50)
+        print("EDIT TRANSACTION")
+        print("=" * 50)
+        
+        while True:
+            try:
+                transaction_id = int(input("Enter transaction ID to edit (or 0 to go back): "))
+                if transaction_id == 0:
+                    return
+                if 1 <= transaction_id <= app.get_max_transaction_id():
+                    break
+                print("Invalid transaction ID")
+            except ValueError:
+                print("Please enter a valid number")
+            
+            # self.clear_screen()
+            app.show_transaction_by_id(transaction_id)
+            print("=" * 50)
+            #wip
+            
+            
     def view_expense_overview(self):
         self.clear_screen()
         print("=" * 50)
