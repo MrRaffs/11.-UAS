@@ -6,7 +6,6 @@ from time import sleep
 def init():
     db = DbModel()
     if db.check_connection():
-        db.check_if_exist()
         sleep(0.5)
         input("Press Enter to continue...")
         

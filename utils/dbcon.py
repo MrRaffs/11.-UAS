@@ -11,13 +11,29 @@ class DbModel:
             sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
     def connect(self):
-        self.connection = mysql.connector.connect(
-                host='localhost',
-                user='root',
-                password='',
-                database=self.db_name
-            )
-        self.cursor = self.connection.cursor(dictionary=True)
+        try:
+            self.connection = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    password='',
+                    database=self.db_name
+                )
+            self.cursor = self.connection.cursor(dictionary=True)
+        except mysql.connector.Error as err:
+            if err.errno == 1049:  # Error: 1049 (42000): Unknown database
+                print(f"Database {self.db_name} does not exist. Creating database...")
+                self.connection = mysql.connector.connect(
+                    host='localhost',
+                    user='root',
+                    password=''
+                )
+                self.cursor = self.connection.cursor()
+                self.cursor.execute(f"CREATE DATABASE {self.db_name}")
+                self.connection.database = self.db_name
+                print(f"Database {self.db_name} created successfully.")
+                self.execute_schema()
+            else:
+                raise
     
     def close(self):
         try:
@@ -38,19 +54,17 @@ class DbModel:
             print(e)
             return False
         
-    def check_if_exist(self):
+    def execute_schema(self):
         self.connect()
-        self.cursor.execute(f"SHOW DATABASES LIKE '{self.db_name}'")
-        result = self.cursor.fetchone()
-        if result:
-            print(f"Database {self.db_name} exists.")
-        else:
-            print(f"Database {self.db_name} does not exist. Creating database...")
-            self.cursor.execute(f"CREATE DATABASE {self.db_name}")
-            print(f"Database {self.db_name} created successfully.")
-            self.cursor.execute(schema)
-            with open('schema.py', 'r') as schema_file:
-                schema = schema_file.read()
-            self.cursor.execute(schema)
+        # print(f"Database {self.db_name} created successfully.")
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+        with open(schema_path, 'r') as schema_file:
+            schema = schema_file.read()
+        self.cursor.execute(schema, multi=True)
+        print("Tables created successfully.")
+        with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'r') as data_file:
+            data = data_file.read()
+        self.cursor.execute(data, multi=True)
+        print("Data inserted successfully.")
         self.close()
     
