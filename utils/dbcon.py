@@ -31,9 +31,12 @@ class DbModel:
                 self.cursor.execute(f"CREATE DATABASE {self.db_name}")
                 self.connection.database = self.db_name
                 print(f"Database {self.db_name} created successfully.")
-                self.execute_schema()
-            else:
-                raise
+                
+                # insert schema
+                if self.create_schema():
+                    self.insert_data()
+                else:
+                    raise Exception("Error creating schema.")
     
     def close(self):
         try:
@@ -53,18 +56,67 @@ class DbModel:
         except Exception as e:
             print(e)
             return False
-        
-    def execute_schema(self):
-        self.connect()
-        # print(f"Database {self.db_name} created successfully.")
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-        with open(schema_path, 'r') as schema_file:
-            schema = schema_file.read()
-        self.cursor.execute(schema, multi=True)
-        print("Tables created successfully.")
-        with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'r') as data_file:
-            data = data_file.read()
-        self.cursor.execute(data, multi=True)
-        print("Data inserted successfully.")
-        self.close()
     
+    def create_schema(self):
+        try:
+            self.connect()
+            query = """
+            CREATE TABLE IF NOT EXISTS savings (
+                saving_id INT AUTO_INCREMENT PRIMARY KEY,
+                saving_name VARCHAR(255) NOT NULL UNIQUE,
+                balance DECIMAL(15, 2) NOT NULL DEFAULT 0
+            );
+
+            -- Table for Transaction Categories (e.g., Food, Home, Transport)
+            CREATE TABLE IF NOT EXISTS transaction_categories (
+                category_id INT AUTO_INCREMENT PRIMARY KEY,
+                category_name VARCHAR(255) NOT NULL UNIQUE,
+                category_type ENUM('expense','income') NOT NULL
+            );
+
+            -- Table for Transactions
+            CREATE TABLE IF NOT EXISTS transactions (
+                transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+                saving_id INT, -- Source saving account
+                destination_saving_id INT DEFAULT NULL, -- Destination saving account for transfers
+                category_id INT DEFAULT NULL, -- For income/expense transactions
+                transaction_type ENUM('income', 'expense', 'transfer') NOT NULL,
+                transaction_date DATE NOT NULL,
+                amount DECIMAL(15, 2) NOT NULL,
+                notes TEXT,
+                FOREIGN KEY (saving_id) REFERENCES savings(saving_id),
+                FOREIGN KEY (destination_saving_id) REFERENCES savings(saving_id),
+                FOREIGN KEY (category_id) REFERENCES transaction_categories(category_id)
+            );
+            """
+            self.cursor.execute(query, multi=True)
+            print(f"Schema created successfully.")
+            self.close()
+            return True
+        except Exception as e:
+            print(f"Error creating database: {e}")
+            return False
+        
+    def insert_data(self):
+        try:
+            self.connect()
+            query = """
+            INSERT INTO transaction_categories (category_name, category_type) VALUES 
+                ('Bills', 'expense'), 
+                ('Transportation', 'expense'), 
+                ('Home', 'expense'), 
+                ('Electronics', 'expense'), 
+                ('Education', 'expense'), 
+                ('Entertainment', 'expense'), 
+                ('Food', 'expense'), 
+                ('Shopping', 'expense'), 
+                ('Telephone', 'expense'), 
+                ('Grants', 'income'), 
+                ('Sale', 'income'), 
+                ('Salary', 'income');
+            """
+            self.cursor.execute(query, multi=True)
+            print("Data inserted successfully.")
+            self.close()
+        except Exception as e:
+            print(f"Error inserting data: {e}")
